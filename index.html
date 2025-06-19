@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" style="overflow: hidden;">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,13 +15,13 @@
                 <p>手持ちのタイルを全て場に出すことが目標です。</p>
             </div>
             <div class="menu-buttons">
-                <button class="btn btn--primary btn--lg btn--full-width" onclick="showSinglePlayerSetup()">
+                <button id="btn-single-player" class="btn btn--primary btn--lg btn--full-width">
                     シングルプレイヤー
                 </button>
-                <button class="btn btn--primary btn--lg btn--full-width" onclick="showMultiPlayerSetup()">
+                <button id="btn-multi-player" class="btn btn--primary btn--lg btn--full-width">
                     マルチプレイヤー
                 </button>
-                <button class="btn btn--secondary btn--lg btn--full-width" onclick="showRulesScreen()">
+                <button id="btn-rules" class="btn btn--secondary btn--lg btn--full-width">
                     ルール
                 </button>
             </div>
@@ -32,21 +32,21 @@
     <div id="player-setup" class="screen">
         <div class="container">
             <div class="setup-header">
-                <button class="btn btn--outline back-btn" onclick="showMainMenu()">← 戻る</button>
+                <button id="btn-back-to-main-from-setup" class="btn btn--outline back-btn">← 戻る</button>
                 <h2 id="setup-title">プレイヤー設定</h2>
                 <div></div>
             </div>
             <div class="setup-content">
                 <div class="form-group">
-                    <label class="form-label">プレイヤー数:</label>
-                    <select id="player-count" class="form-control" onchange="updatePlayerSetupUI()">
+                    <label for="player-count" class="form-label">プレイヤー数:</label>
+                    <select id="player-count" class="form-control">
                         <option value="2">2人</option>
                         <option value="3">3人</option>
                         <option value="4">4人</option>
                     </select>
                 </div>
                 <div id="player-inputs"></div>
-                <button class="btn btn--primary btn--lg btn--full-width" onclick="startGameFromSetup()">
+                <button id="btn-start-game" class="btn btn--primary btn--lg btn--full-width">
                     ゲーム開始
                 </button>
             </div>
@@ -54,28 +54,25 @@
     </div>
 
     <!-- ルール画面 -->
-    <div id="rules" class="screen">
+    <div id="rules-screen" class="screen">
         <div class="container">
             <div class="rules-header">
-                <button class="btn btn--outline back-btn" onclick="showMainMenu()">← 戻る</button>
+                <button id="btn-back-to-main-from-rules" class="btn btn--outline back-btn">← 戻る</button>
                 <h2>ゲームルール</h2>
                 <div></div>
             </div>
             <div class="rules-content">
                 <h3>ゲーム概要</h3>
                 <p>手持ちのタイルを全て場に出すことが目標です。</p>
-                
                 <h3>タイル構成</h3>
                 <ul>
                     <li>数字1-13の4色（赤、青、黄、緑）各2枚ずつ（104枚）</li>
                     <li>ジョーカー2枚</li>
                     <li>各プレイヤーは14枚からスタート</li>
                 </ul>
-
                 <h3>セットの種類</h3>
                 <p><strong>グループ：</strong>同じ数字で色が異なるタイル3-4枚</p>
                 <p><strong>ラン：</strong>同じ色で連続する数字のタイル3枚以上</p>
-
                 <h3>ゲームの流れ</h3>
                 <ul>
                     <li>初回メルドは30点以上が必要</li>
@@ -102,24 +99,14 @@
                     現在のプレイヤー: <span id="current-player-name">プレイヤー1</span>
                 </div>
                 <div class="game-actions">
-                    <button id="undo-btn" class="btn btn--outline btn--sm" onclick="undoMove()" disabled>
-                        元に戻す
-                    </button>
-                    <button id="draw-btn" class="btn btn--secondary btn--sm" onclick="drawTile()">
-                        カードを引く
-                    </button>
-                    <button id="end-turn-btn" class="btn btn--primary btn--sm" onclick="endTurn()">
-                        ターン終了
-                    </button>
+                    <button id="undo-btn" class="btn btn--outline btn--sm" disabled>元に戻す</button>
+                    <button id="draw-btn" class="btn btn--secondary btn--sm">カードを引く</button>
+                    <button id="end-turn-btn" class="btn btn--primary btn--sm">ターン終了</button>
                 </div>
             </div>
-
             <div id="table-area" class="table-area">
-                <div class="table-placeholder">
-                    ここにタイルをドラッグして場に出してください
-                </div>
+                <div class="table-placeholder">ここにタイルをドラッグして場に出してください</div>
             </div>
-
             <div class="player-rack">
                 <div class="rack-header">
                     <span>あなたの手札</span>
@@ -127,7 +114,6 @@
                 </div>
                 <div id="player-tiles" class="rack-tiles"></div>
             </div>
-
             <div id="other-players" class="other-players"></div>
         </div>
     </div>
@@ -139,17 +125,13 @@
                 <h3>🎉 ゲーム終了！</h3>
                 <p><span id="winner-name">プレイヤー1</span> の勝利！</p>
             </div>
-            <div class="final-scores">
+            <div class="final-scores-container">
                 <h4>最終スコア</h4>
                 <div id="final-scores"></div>
             </div>
             <div class="game-over-actions">
-                <button class="btn btn--primary btn--lg btn--full-width" onclick="restartGame()">
-                    もう一度プレイ
-                </button>
-                <button class="btn btn--secondary btn--lg btn--full-width" onclick="showMainMenu()">
-                    メインメニューに戻る
-                </button>
+                <button id="btn-restart-game" class="btn btn--primary btn--lg btn--full-width">もう一度プレイ</button>
+                <button id="btn-back-to-main-from-over" class="btn btn--secondary btn--lg btn--full-width">メインメニューに戻る</button>
             </div>
         </div>
     </div>
