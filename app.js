@@ -13,13 +13,11 @@ class TileBlendGame {
             turnHistory: [],
             drawPile: []
         };
-        
         this.colors = ['red', 'blue', 'yellow', 'green'];
         this.numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         this.draggedTile = null;
         this.draggedFrom = null;
         this.currentMove = [];
-        
         this.initializeEventListeners();
     }
 
@@ -40,7 +38,6 @@ class TileBlendGame {
     showScreen(screenId) {
         const screens = document.querySelectorAll('.screen');
         screens.forEach(screen => screen.classList.remove('active'));
-        
         const targetScreen = document.getElementById(screenId);
         if (targetScreen) {
             targetScreen.classList.add('active');
@@ -54,7 +51,6 @@ class TileBlendGame {
         if (title) {
             title.textContent = isSinglePlayer ? 'シングルプレイヤー設定' : 'マルチプレイヤー設定';
         }
-        
         this.updatePlayerSetup();
         this.showScreen('player-setup');
     }
@@ -62,9 +58,8 @@ class TileBlendGame {
     updatePlayerSetup() {
         const playerCountSelect = document.getElementById('player-count');
         const playerInputs = document.getElementById('player-inputs');
-        
         if (!playerCountSelect || !playerInputs) return;
-        
+
         const playerCount = parseInt(playerCountSelect.value);
         const isSinglePlayer = this.gameState.isSinglePlayer;
         
@@ -86,7 +81,7 @@ class TileBlendGame {
                     <label>AI${i - 1}:</label>
                     <select id="player-${i}-difficulty" class="form-control">
                         <option value="easy">簡単</option>
-                        <option value="medium">普通</option>
+                        <option value="medium" selected>普通</option>
                         <option value="hard">難しい</option>
                     </select>
                 `;
@@ -177,12 +172,175 @@ class TileBlendGame {
         
         this.gameState.currentPlayerIndex = 0;
         this.gameState.gameStarted = true;
-        
         this.showScreen('game-board');
         this.updateGameUI();
     }
 
-    // AI関連メソッド（簡略版）
+    // ドラッグ&ドロップ処理
+    handleDragStart(e) {
+        if (!e.target.classList.contains('tile')) return;
+        
+        this.draggedTile = {
+            id: parseInt(e.target.dataset.tileId),
+            element: e.target
+        };
+        
+        // ドラッグ元を記録
+        if (e.target.closest('.rack-tiles')) {
+            this.draggedFrom = 'rack';
+        } else if (e.target.closest('.table-set')) {
+            this.draggedFrom = 'table';
+            this.draggedTile.setId = e.target.closest('.table-set').dataset.setId;
+        }
+        
+        e.target.classList.add('dragging');
+        if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+        }
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        if (!this.draggedTile) return;
+        
+        const tableArea = document.getElementById('table-area');
+        const tableSet = e.target.closest('.table-set');
+        
+        if (tableSet) {
+            // 既存のセットにドロップ
+            this.dropTileOnSet(e, tableSet);
+        } else if (tableArea && (tableArea.contains(e.target) || e.target === tableArea)) {
+            // テーブルエリアにドロップ（新しいセット作成）
+            this.dropTileOnTable(e);
+        }
+        
+        this.handleDragEnd(e);
+    }
+
+    handleDragEnd(e) {
+        if (e.target && e.target.classList.contains('tile')) {
+            e.target.classList.remove('dragging');
+        }
+        this.draggedTile = null;
+        this.draggedFrom = null;
+    }
+
+    // タイルをテーブルに出す処理
+    dropTileOnTable(e) {
+        if (!this.draggedTile) return;
+        
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        let tile;
+        
+        if (this.draggedFrom === 'rack') {
+            // 手札からテーブルへ
+            const playerTiles = this.gameState.playerTiles[currentPlayer.id];
+            const tileIndex = playerTiles.findIndex(t => t.id === this.draggedTile.id);
+            if (tileIndex === -1) return;
+            
+            [tile] = playerTiles.splice(tileIndex, 1);
+        } else if (this.draggedFrom === 'table') {
+            // テーブル上のセット間移動
+            const sourceSet = this.gameState.tableSets.find(set => set.id == this.draggedTile.setId);
+            if (!sourceSet) return;
+            
+            const tileIndex = sourceSet.tiles.findIndex(t => t.id === this.draggedTile.id);
+            if (tileIndex === -1) return;
+            
+            [tile] = sourceSet.tiles.splice(tileIndex, 1);
+            
+            // 元のセットが空になったら削除
+            if (sourceSet.tiles.length === 0) {
+                const setIndex = this.gameState.tableSets.findIndex(set => set.id === sourceSet.id);
+                if (setIndex >= 0) {
+                    this.gameState.tableSets.splice(setIndex, 1);
+                }
+            }
+        }
+        
+        if (tile) {
+            // 新しいテーブルセットとして場に追加
+            this.gameState.tableSets.push({
+                id: Date.now() + Math.random(),
+                tiles: [tile],
+                playerId: currentPlayer.id
+            });
+            
+            this.updateGameUI();
+            this.showMessage('タイルを場に出しました', 'info');
+        }
+    }
+
+    // 既存のセットにタイルを追加
+    dropTileOnSet(e, targetSetElement) {
+        if (!this.draggedTile) return;
+        
+        const targetSetId = targetSetElement.dataset.setId;
+        const targetSet = this.gameState.tableSets.find(set => set.id == targetSetId);
+        if (!targetSet) return;
+        
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        let tile;
+        
+        if (this.draggedFrom === 'rack') {
+            // 手札からセットへ
+            const playerTiles = this.gameState.playerTiles[currentPlayer.id];
+            const tileIndex = playerTiles.findIndex(t => t.id === this.draggedTile.id);
+            if (tileIndex === -1) return;
+            
+            [tile] = playerTiles.splice(tileIndex, 1);
+        } else if (this.draggedFrom === 'table') {
+            // セット間移動
+            const sourceSetId = this.draggedTile.setId;
+            if (sourceSetId === targetSetId) return; // 同じセット内では何もしない
+            
+            const sourceSet = this.gameState.tableSets.find(set => set.id == sourceSetId);
+            if (!sourceSet) return;
+            
+            const tileIndex = sourceSet.tiles.findIndex(t => t.id === this.draggedTile.id);
+            if (tileIndex === -1) return;
+            
+            [tile] = sourceSet.tiles.splice(tileIndex, 1);
+            
+            // 元のセットが空になったら削除
+            if (sourceSet.tiles.length === 0) {
+                const setIndex = this.gameState.tableSets.findIndex(set => set.id === sourceSet.id);
+                if (setIndex >= 0) {
+                    this.gameState.tableSets.splice(setIndex, 1);
+                }
+            }
+        }
+        
+        if (tile) {
+            targetSet.tiles.push(tile);
+            this.updateGameUI();
+            this.showMessage('タイルをセットに追加しました', 'info');
+        }
+    }
+
+    // タッチイベント処理
+    handleTouchStart(e) {
+        if (e.target.classList.contains('tile')) {
+            this.handleDragStart(e);
+        }
+    }
+
+    handleTouchMove(e) {
+        e.preventDefault();
+    }
+
+    handleTouchEnd(e) {
+        this.handleDragEnd(e);
+    }
+
+    // AI関連メソッド
     makeAIMove(player) {
         const playerTiles = this.gameState.playerTiles[player.id];
         const possibleSets = this.findPossibleSets(playerTiles);
@@ -215,7 +373,7 @@ class TileBlendGame {
         for (const number in numberGroups) {
             const group = numberGroups[number];
             if (group.length >= 3) {
-                possibleSets.push(group.slice(0, 3)); // 最初の3枚を取る
+                possibleSets.push(group.slice(0, 3));
             }
         }
         
@@ -234,8 +392,8 @@ class TileBlendGame {
     }
 
     playSet(tiles, playerId) {
-        // タイルをプレイヤーの手札から削除
         const playerTiles = this.gameState.playerTiles[playerId];
+        
         for (const tile of tiles) {
             const index = playerTiles.findIndex(t => t.id === tile.id);
             if (index >= 0) {
@@ -243,16 +401,13 @@ class TileBlendGame {
             }
         }
         
-        // テーブルにセットを追加
         this.gameState.tableSets.push({
             id: Date.now() + Math.random(),
             tiles: tiles,
             playerId: playerId
         });
         
-        // 初回メルドフラグを設定
         this.gameState.players[playerId].hasInitialMeld = true;
-        
         this.updateGameUI();
     }
 
@@ -321,7 +476,6 @@ class TileBlendGame {
             existingSets.forEach(set => set.remove());
         } else {
             if (placeholder) placeholder.style.display = 'none';
-            
             const existingSets = tableArea.querySelectorAll('.table-set');
             existingSets.forEach(set => set.remove());
             
@@ -339,6 +493,7 @@ class TileBlendGame {
         
         for (const tile of set.tiles) {
             const tileElement = this.createTileElement(tile);
+            tileElement.draggable = true;
             setElement.appendChild(tileElement);
         }
         
@@ -357,6 +512,7 @@ class TileBlendGame {
             
             const playerElement = document.createElement('div');
             playerElement.className = 'player-info';
+            
             if (i === this.gameState.currentPlayerIndex) {
                 playerElement.classList.add('current');
             }
@@ -384,85 +540,24 @@ class TileBlendGame {
         if (endTurnBtn) endTurnBtn.disabled = !isCurrentPlayerTurn;
     }
 
-    handleDragStart(e) {
-      if (!e.target.classList.contains('tile')) return;
-      this.draggedTile = {
-        id: parseInt(e.target.dataset.tileId),
-        element: e.target
-      };
-      e.target.classList.add('dragging');
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-      }
-    }
-  
-    handleDragOver(e) {
-      e.preventDefault();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'move';
-      }
-    }
-  
-    handleDrop(e) {
-      e.preventDefault();
-      if (!this.draggedTile) return;
-      const tableArea = document.getElementById('table-area');
-      // テーブルエリアにドロップされたか判定
-      if (tableArea && (tableArea.contains(e.target) || e.target === tableArea)) {
-        this.dropTileOnTable(e);
-      }
-      this.handleDragEnd(e);
-    }
-
-    handleDragEnd(e) {
-      if (e.target && e.target.classList.contains('tile')) {
-        e.target.classList.remove('dragging');
-      }
-      this.draggedTile = null;
-    }
-  
-    // タイルをテーブルに出す処理
-    dropTileOnTable(e) {
-      if (!this.draggedTile) return;
-      const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
-      const playerTiles = this.gameState.playerTiles[currentPlayer.id];
-      const tileIndex = playerTiles.findIndex(t => t.id === this.draggedTile.id);
-      if (tileIndex === -1) return; // 手札にない場合は何もしない
-
-      // タイルを手札から削除
-      const [tile] = playerTiles.splice(tileIndex, 1);
-  
-      // 新しいテーブルセットとして場に追加
-      this.gameState.tableSets.push({
-        id: Date.now() + Math.random(),
-        tiles: [tile],
-        playerId: currentPlayer.id
-      });
-
-      // UIを更新
-      this.updateGameUI();
-      this.showMessage('タイルを場に出しました', 'info');
-    }
-
     // ゲームアクション
     drawTile() {
         const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
         if (!currentPlayer) return;
         
         const playerTiles = this.gameState.playerTiles[currentPlayer.id];
-          
+        
         if (this.gameState.drawPile.length > 0) {
             const drawnTile = this.gameState.drawPile.pop();
             playerTiles.push(drawnTile);
             this.updateGameUI();
             this.showMessage('タイルを1枚引きました', 'info');
-              
             setTimeout(() => this.endTurn(), 1000);
         } else {
             this.showMessage('山札がありません', 'error');
         }
     }
-  
+
     undoMove() {
         this.showMessage('前の手を取り消しました', 'info');
     }
@@ -474,18 +569,19 @@ class TileBlendGame {
         const playerTiles = this.gameState.playerTiles[currentPlayer.id];
         
         if (playerTiles.length === 0) {
-          this.endGame(currentPlayer);
+            this.endGame(currentPlayer);
             return;
         }
         
-        this.gameState.currentPlayerIndex = (this.gameState.currentPlayerIndex + 1) %this.gameState.players.length;
+        this.gameState.currentPlayerIndex = (this.gameState.currentPlayerIndex + 1) % this.gameState.players.length;
         this.updateGameUI();
         
         const nextPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
         if (nextPlayer && nextPlayer.isAI) {
-            setTimeout(() => this.executeAITurn(nextPlayer), 1500)
+            setTimeout(() => this.executeAITurn(nextPlayer), 1500);
         }
     }
+
     executeAITurn(player) {
         this.showMessage(`${player.name}が考え中...`, 'info');
         
@@ -534,7 +630,6 @@ class TileBlendGame {
         const finalScoresContainer = document.getElementById('final-scores');
         if (finalScoresContainer) {
             finalScoresContainer.innerHTML = '';
-            
             finalScores.forEach(playerScore => {
                 const scoreElement = document.createElement('div');
                 scoreElement.className = 'score-item';
@@ -581,25 +676,31 @@ window.showMainMenu = function() {
     }
 };
 
-window.showPlayerSetup = function(isSinglePlayer) {
+window.showSinglePlayerSetup = function() {
     if (game) {
-        game.showPlayerSetup(isSinglePlayer);
+        game.showPlayerSetup(true);
     }
 };
 
-window.updatePlayerSetup = function() {
+window.showMultiPlayerSetup = function() {
+    if (game) {
+        game.showPlayerSetup(false);
+    }
+};
+
+window.updatePlayerSetupUI = function() {
     if (game) {
         game.updatePlayerSetup();
     }
 };
 
-window.showRules = function() {
+window.showRulesScreen = function() {
     if (game) {
         game.showScreen('rules');
     }
 };
 
-window.startGame = function() {
+window.startGameFromSetup = function() {
     if (game) {
         game.showScreen('loading');
         setTimeout(() => {
@@ -652,6 +753,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // プレイヤー数変更イベント
     const playerCountSelect = document.getElementById('player-count');
     if (playerCountSelect) {
-        playerCountSelect.addEventListener('change', window.updatePlayerSetup);
+        playerCountSelect.addEventListener('change', window.updatePlayerSetupUI);
     }
 });
