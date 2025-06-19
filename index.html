@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" style="overflow: hidden;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,161 +7,149 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <!-- メインメニュー -->
-        <div id="main-menu" class="screen active">
-            <div class="container">
-                <div class="menu-header">
-                    <h1>TileBlend</h1>
-                    <p>タイル戦略ゲーム</p>
+    <!-- メインメニュー -->
+    <div id="main-menu" class="screen active">
+        <div class="container">
+            <div class="menu-header">
+                <h1>TileBlend</h1>
+                <p>手持ちのタイルを全て場に出すことが目標です。</p>
+            </div>
+            <div class="menu-buttons">
+                <button class="btn btn--primary btn--lg btn--full-width" onclick="showSinglePlayerSetup()">
+                    シングルプレイヤー
+                </button>
+                <button class="btn btn--primary btn--lg btn--full-width" onclick="showMultiPlayerSetup()">
+                    マルチプレイヤー
+                </button>
+                <button class="btn btn--secondary btn--lg btn--full-width" onclick="showRulesScreen()">
+                    ルール
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- プレイヤー設定画面 -->
+    <div id="player-setup" class="screen">
+        <div class="container">
+            <div class="setup-header">
+                <button class="btn btn--outline back-btn" onclick="showMainMenu()">← 戻る</button>
+                <h2 id="setup-title">プレイヤー設定</h2>
+                <div></div>
+            </div>
+            <div class="setup-content">
+                <div class="form-group">
+                    <label class="form-label">プレイヤー数:</label>
+                    <select id="player-count" class="form-control" onchange="updatePlayerSetupUI()">
+                        <option value="2">2人</option>
+                        <option value="3">3人</option>
+                        <option value="4">4人</option>
+                    </select>
                 </div>
-                <div class="menu-buttons">
-                    <button class="btn btn--primary btn--lg btn--full-width" onclick="showPlayerSetup(false)">
-                        マルチプレイヤー (2-4人)
+                <div id="player-inputs"></div>
+                <button class="btn btn--primary btn--lg btn--full-width" onclick="startGameFromSetup()">
+                    ゲーム開始
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ルール画面 -->
+    <div id="rules" class="screen">
+        <div class="container">
+            <div class="rules-header">
+                <button class="btn btn--outline back-btn" onclick="showMainMenu()">← 戻る</button>
+                <h2>ゲームルール</h2>
+                <div></div>
+            </div>
+            <div class="rules-content">
+                <h3>ゲーム概要</h3>
+                <p>手持ちのタイルを全て場に出すことが目標です。</p>
+                
+                <h3>タイル構成</h3>
+                <ul>
+                    <li>数字1-13の4色（赤、青、黄、緑）各2枚ずつ（104枚）</li>
+                    <li>ジョーカー2枚</li>
+                    <li>各プレイヤーは14枚からスタート</li>
+                </ul>
+
+                <h3>セットの種類</h3>
+                <p><strong>グループ：</strong>同じ数字で色が異なるタイル3-4枚</p>
+                <p><strong>ラン：</strong>同じ色で連続する数字のタイル3枚以上</p>
+
+                <h3>ゲームの流れ</h3>
+                <ul>
+                    <li>初回メルドは30点以上が必要</li>
+                    <li>一度メルドしたら、場のタイルを操作可能</li>
+                    <li>出せない場合は山札から1枚引く</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ローディング画面 -->
+    <div id="loading" class="screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>ゲームを準備中...</h3>
+        </div>
+    </div>
+
+    <!-- ゲームボード -->
+    <div id="game-board" class="screen">
+        <div class="game-container">
+            <div class="game-info">
+                <div class="current-player">
+                    現在のプレイヤー: <span id="current-player-name">プレイヤー1</span>
+                </div>
+                <div class="game-actions">
+                    <button id="undo-btn" class="btn btn--outline btn--sm" onclick="undoMove()" disabled>
+                        元に戻す
                     </button>
-                    <button class="btn btn--secondary btn--lg btn--full-width" onclick="showPlayerSetup(true)">
-                        シングルプレイヤー (AI対戦)
+                    <button id="draw-btn" class="btn btn--secondary btn--sm" onclick="drawTile()">
+                        カードを引く
                     </button>
-                    <button class="btn btn--outline btn--lg btn--full-width" onclick="showRules()">
-                        ルール説明
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- プレイヤー設定画面 -->
-        <div id="player-setup" class="screen">
-            <div class="container">
-                <div class="setup-header">
-                    <button class="btn btn--outline btn--sm back-btn" onclick="showMainMenu()">← 戻る</button>
-                    <h2 id="setup-title">プレイヤー設定</h2>
-                </div>
-                <div class="setup-content">
-                    <div class="form-group">
-                        <label class="form-label">プレイヤー数</label>
-                        <select id="player-count" class="form-control" onchange="updatePlayerSetup()">
-                            <option value="2">2人</option>
-                            <option value="3">3人</option>
-                            <option value="4">4人</option>
-                        </select>
-                    </div>
-                    <div id="player-inputs">
-                        <!-- プレイヤー入力フィールドが動的に追加される -->
-                    </div>
-                    <button class="btn btn--primary btn--lg btn--full-width" onclick="startGame()">
-                        ゲーム開始
+                    <button id="end-turn-btn" class="btn btn--primary btn--sm" onclick="endTurn()">
+                        ターン終了
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- ルール説明画面 -->
-        <div id="rules" class="screen">
-            <div class="container">
-                <div class="rules-header">
-                    <button class="btn btn--outline btn--sm back-btn" onclick="showMainMenu()">← 戻る</button>
-                    <h2>ルール説明</h2>
-                </div>
-                <div class="rules-content">
-                    <div class="card">
-                        <div class="card__body">
-                            <h3>ゲーム目標</h3>
-                            <p>手持ちのタイルを全て場に出すことが目標です。</p>
-                            
-                            <h3>タイルについて</h3>
-                            <p>• 数字1-13の4色（赤、青、黄、緑）各2枚ずつ（104枚）</p>
-                            <p>• ジョーカー2枚</p>
-                            <p>• 各プレイヤーは14枚からスタート</p>
-                            
-                            <h3>セットの種類</h3>
-                            <p><strong>グループ：</strong>同じ数字で色が異なるタイル3-4枚</p>
-                            <p><strong>ラン：</strong>同じ色で連続する数字のタイル3枚以上</p>
-                            
-                            <h3>ゲームの流れ</h3>
-                            <p>• 初回メルドは30点以上が必要</p>
-                            <p>• 一度メルドしたら、場のタイルを操作可能</p>
-                            <p>• 出せない場合は山札から1枚引く</p>
-                        </div>
-                    </div>
+            <div id="table-area" class="table-area">
+                <div class="table-placeholder">
+                    ここにタイルをドラッグして場に出してください
                 </div>
             </div>
-        </div>
 
-        <!-- メインゲーム画面 -->
-        <div id="game-board" class="screen">
-            <div class="game-container">
-                <!-- ゲーム情報バー -->
-                <div class="game-info">
-                    <div class="current-player">
-                        <span id="current-player-name">プレイヤー1</span>のターン
-                    </div>
-                    <div class="game-actions">
-                        <button class="btn btn--sm btn--outline" onclick="undoMove()" id="undo-btn" disabled>
-                            元に戻す
-                        </button>
-                        <button class="btn btn--sm btn--secondary" onclick="drawTile()" id="draw-btn">
-                            タイルを引く
-                        </button>
-                        <button class="btn btn--sm btn--primary" onclick="endTurn()" id="end-turn-btn">
-                            ターン終了
-                        </button>
-                    </div>
+            <div class="player-rack">
+                <div class="rack-header">
+                    <span>あなたの手札</span>
+                    <span id="tile-count">14枚</span>
                 </div>
-
-                <!-- テーブル（場） -->
-                <div class="table-area" id="table-area">
-                    <div class="table-placeholder">
-                        ここにタイルをドラッグしてセットを作成
-                    </div>
-                </div>
-
-                <!-- プレイヤーのタイルラック -->
-                <div class="player-rack">
-                    <div class="rack-header">
-                        <span>あなたのタイル</span>
-                        <span id="tile-count">14枚</span>
-                    </div>
-                    <div class="rack-tiles" id="player-tiles">
-                        <!-- プレイヤーのタイルが表示される -->
-                    </div>
-                </div>
-
-                <!-- 他のプレイヤー情報 -->
-                <div class="other-players" id="other-players">
-                    <!-- 他のプレイヤーの情報が表示される -->
-                </div>
+                <div id="player-tiles" class="rack-tiles"></div>
             </div>
-        </div>
 
-        <!-- ゲーム終了画面 -->
-        <div id="game-over" class="screen">
-            <div class="container">
-                <div class="game-over-content">
-                    <h2>ゲーム終了</h2>
-                    <div class="winner-announcement">
-                        <h3 id="winner-name">勝者</h3>
-                        <p>おめでとうございます！</p>
-                    </div>
-                    <div class="final-scores" id="final-scores">
-                        <!-- 最終スコアが表示される -->
-                    </div>
-                    <div class="game-over-actions">
-                        <button class="btn btn--primary btn--lg" onclick="showMainMenu()">
-                            メニューに戻る
-                        </button>
-                        <button class="btn btn--secondary btn--lg" onclick="restartGame()">
-                            もう一度プレイ
-                        </button>
-                    </div>
-                </div>
+            <div id="other-players" class="other-players"></div>
+        </div>
+    </div>
+
+    <!-- ゲーム終了画面 -->
+    <div id="game-over" class="screen">
+        <div class="game-over-content">
+            <div class="winner-announcement">
+                <h3>🎉 ゲーム終了！</h3>
+                <p><span id="winner-name">プレイヤー1</span> の勝利！</p>
             </div>
-        </div>
-
-        <!-- ローディング画面 -->
-        <div id="loading" class="screen">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <p>ゲームを準備中...</p>
+            <div class="final-scores">
+                <h4>最終スコア</h4>
+                <div id="final-scores"></div>
+            </div>
+            <div class="game-over-actions">
+                <button class="btn btn--primary btn--lg btn--full-width" onclick="restartGame()">
+                    もう一度プレイ
+                </button>
+                <button class="btn btn--secondary btn--lg btn--full-width" onclick="showMainMenu()">
+                    メインメニューに戻る
+                </button>
             </div>
         </div>
     </div>
