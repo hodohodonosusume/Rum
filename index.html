@@ -4,10 +4,261 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TileBlend - タイル戦略ゲーム</title>
-    <link rel="stylesheet" href="style.css">
+    
+    <!-- スタイルシート(CSS)をここに埋め込みます -->
+    <style>
+        /* 基本スタイル */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Poppins:wght@500;700&display=swap');
+
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #50e3c2;
+            --background-color: #f4f7f6;
+            --surface-color: #ffffff;
+            --text-color: #333;
+            --light-text-color: #fff;
+            --border-color: #e0e0e0;
+            --tile-red: #d0021b;
+            --tile-blue: #4a90e2;
+            --tile-yellow: #f5a623;
+            --tile-green: #7ed321;
+            --tile-black: #000;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow: hidden; /* スクロールを禁止 */
+            height: 100vh;
+        }
+
+        /* スクリーン管理 */
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none; /* 通常は非表示 */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            transition: opacity 0.3s ease;
+        }
+
+        .screen.active {
+            display: flex; /* アクティブな画面のみ表示 */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--surface-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        /* ボタン */
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 700;
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .btn--primary { background-color: var(--primary-color); color: var(--light-text-color); }
+        .btn--primary:hover { background-color: #357abd; }
+        .btn--secondary { background-color: var(--secondary-color); color: var(--light-text-color); }
+        .btn--secondary:hover { background-color: #48c9b0; }
+        .btn--outline { background-color: transparent; color: var(--primary-color); border: 2px solid var(--primary-color); }
+        .btn--outline:hover { background-color: var(--primary-color); color: var(--light-text-color); }
+        .btn--lg { font-size: 18px; padding: 15px 30px; }
+        .btn--sm { font-size: 14px; padding: 8px 16px; }
+        .btn--full-width { width: 100%; display: block; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        /* フォーム要素 */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 700; }
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        /* メニュー画面 */
+        .menu-header { text-align: center; margin-bottom: 30px; }
+        .menu-header h1 { font-family: 'Poppins', sans-serif; font-size: 48px; margin: 0; color: var(--primary-color); }
+        .menu-header p { font-size: 18px; color: #666; }
+        .menu-buttons .btn { margin-bottom: 15px; }
+
+        /* 設定画面 */
+        .setup-header, .rules-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .back-btn { padding: 8px 12px; }
+
+        /* ゲームボード */
+        #game-board { justify-content: flex-start; padding: 0; background-color: #e8f0f2; }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: var(--surface-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .game-actions .btn { margin-left: 10px; }
+
+        /* テーブルエリア */
+        .table-area {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        .table-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #999;
+            font-size: 18px;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+        }
+        .table-set {
+            display: flex;
+            flex-wrap: nowrap;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 2px solid transparent;
+        }
+        .table-set.valid { border-color: var(--secondary-color); }
+        .table-set.invalid { border-color: var(--tile-red); }
+
+        /* プレイヤー手札 */
+        .player-rack {
+            background: #34495e;
+            padding: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+        }
+        .rack-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--light-text-color);
+            padding: 0 10px 10px;
+            font-weight: 700;
+        }
+        .rack-tiles {
+            display: flex;
+            gap: 5px;
+            padding: 10px;
+            background: #2c3e50;
+            border-radius: 8px;
+            min-height: 70px;
+            overflow-x: auto;
+        }
+
+        /* 他プレイヤー表示 */
+        .other-players {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 10px;
+            background: #c8d6e5;
+        }
+        .player-info {
+            background: #fff;
+            padding: 5px 15px;
+            border-radius: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .player-info.current {
+            border: 2px solid var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* タイル */
+        .tile {
+            width: 40px;
+            height: 60px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Poppins', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            cursor: grab;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s ease;
+        }
+        .tile.dragging {
+            opacity: 0.5;
+            transform: scale(1.1);
+            cursor: grabbing;
+        }
+        .tile.red { background-color: var(--tile-red); color: white; }
+        .tile.blue { background-color: var(--tile-blue); color: white; }
+        .tile.yellow { background-color: var(--tile-yellow); color: white; }
+        .tile.green { background-color: var(--tile-green); color: white; }
+        .tile.joker { background-color: var(--tile-black); color: white; }
+
+        /* ローディング画面 */
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(0,0,0,0.1);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ゲームオーバー画面 */
+        .game-over-content { text-align: center; }
+        .game-over-content h3 { font-size: 32px; }
+        .final-scores-container { margin: 30px 0; }
+        .score-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border-color); }
+    </style>
 </head>
 <body>
-    <!-- メインメニュー -->
+    <!-- HTMLのコンテンツ部分は変更ありません -->
     <div id="main-menu" class="screen active">
         <div class="container">
             <div class="menu-header">
@@ -15,20 +266,12 @@
                 <p>手持ちのタイルを全て場に出すことが目標です。</p>
             </div>
             <div class="menu-buttons">
-                <button id="btn-single-player" class="btn btn--primary btn--lg btn--full-width">
-                    シングルプレイヤー
-                </button>
-                <button id="btn-multi-player" class="btn btn--primary btn--lg btn--full-width">
-                    マルチプレイヤー
-                </button>
-                <button id="btn-rules" class="btn btn--secondary btn--lg btn--full-width">
-                    ルール
-                </button>
+                <button id="btn-single-player" class="btn btn--primary btn--lg btn--full-width">シングルプレイヤー</button>
+                <button id="btn-multi-player" class="btn btn--primary btn--lg btn--full-width">マルチプレイヤー</button>
+                <button id="btn-rules" class="btn btn--secondary btn--lg btn--full-width">ルール</button>
             </div>
         </div>
     </div>
-
-    <!-- プレイヤー設定画面 -->
     <div id="player-setup" class="screen">
         <div class="container">
             <div class="setup-header">
@@ -46,14 +289,10 @@
                     </select>
                 </div>
                 <div id="player-inputs"></div>
-                <button id="btn-start-game" class="btn btn--primary btn--lg btn--full-width">
-                    ゲーム開始
-                </button>
+                <button id="btn-start-game" class="btn btn--primary btn--lg btn--full-width">ゲーム開始</button>
             </div>
         </div>
     </div>
-
-    <!-- ルール画面 -->
     <div id="rules-screen" class="screen">
         <div class="container">
             <div class="rules-header">
@@ -62,80 +301,267 @@
                 <div></div>
             </div>
             <div class="rules-content">
-                <h3>ゲーム概要</h3>
-                <p>手持ちのタイルを全て場に出すことが目標です。</p>
-                <h3>タイル構成</h3>
-                <ul>
-                    <li>数字1-13の4色（赤、青、黄、緑）各2枚ずつ（104枚）</li>
-                    <li>ジョーカー2枚</li>
-                    <li>各プレイヤーは14枚からスタート</li>
-                </ul>
-                <h3>セットの種類</h3>
-                <p><strong>グループ：</strong>同じ数字で色が異なるタイル3-4枚</p>
-                <p><strong>ラン：</strong>同じ色で連続する数字のタイル3枚以上</p>
-                <h3>ゲームの流れ</h3>
-                <ul>
-                    <li>初回メルドは30点以上が必要</li>
-                    <li>一度メルドしたら、場のタイルを操作可能</li>
-                    <li>出せない場合は山札から1枚引く</li>
-                </ul>
+                <h3>概要</h3><p>手持ちのタイルを全て場に出すことが目標です。</p>
+                <h3>タイル</h3><ul><li>数字1-13の4色 各2枚</li><li>ジョーカー2枚</li></ul>
+                <h3>セット</h3><p>グループ(同数字異色)かラン(同色連番)を3枚以上で作ります。</p>
             </div>
         </div>
     </div>
-
-    <!-- ローディング画面 -->
-    <div id="loading" class="screen">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h3>ゲームを準備中...</h3>
-        </div>
-    </div>
-
-    <!-- ゲームボード -->
+    <div id="loading" class="screen"><div class="loading-spinner"></div><h3>ゲームを準備中...</h3></div>
     <div id="game-board" class="screen">
         <div class="game-container">
             <div class="game-info">
-                <div class="current-player">
-                    現在のプレイヤー: <span id="current-player-name">プレイヤー1</span>
-                </div>
+                <div>Current: <span id="current-player-name"></span></div>
                 <div class="game-actions">
-                    <button id="undo-btn" class="btn btn--outline btn--sm" disabled>元に戻す</button>
-                    <button id="draw-btn" class="btn btn--secondary btn--sm">カードを引く</button>
+                    <button id="draw-btn" class="btn btn--secondary btn--sm">山から引く</button>
                     <button id="end-turn-btn" class="btn btn--primary btn--sm">ターン終了</button>
                 </div>
             </div>
-            <div id="table-area" class="table-area">
-                <div class="table-placeholder">ここにタイルをドラッグして場に出してください</div>
-            </div>
+            <div id="table-area" class="table-area"><div class="table-placeholder">ここにタイルを配置</div></div>
             <div class="player-rack">
-                <div class="rack-header">
-                    <span>あなたの手札</span>
-                    <span id="tile-count">14枚</span>
-                </div>
+                <div class="rack-header"><span>あなたの手札</span><span id="tile-count">0枚</span></div>
                 <div id="player-tiles" class="rack-tiles"></div>
             </div>
             <div id="other-players" class="other-players"></div>
         </div>
     </div>
-
-    <!-- ゲーム終了画面 -->
     <div id="game-over" class="screen">
-        <div class="game-over-content">
-            <div class="winner-announcement">
-                <h3>🎉 ゲーム終了！</h3>
-                <p><span id="winner-name">プレイヤー1</span> の勝利！</p>
-            </div>
-            <div class="final-scores-container">
-                <h4>最終スコア</h4>
-                <div id="final-scores"></div>
-            </div>
-            <div class="game-over-actions">
-                <button id="btn-restart-game" class="btn btn--primary btn--lg btn--full-width">もう一度プレイ</button>
-                <button id="btn-back-to-main-from-over" class="btn btn--secondary btn--lg btn--full-width">メインメニューに戻る</button>
-            </div>
+        <div class="container game-over-content">
+            <h3>🎉 ゲーム終了！</h3>
+            <p><span id="winner-name"></span> の勝利！</p>
+            <button id="btn-restart-game" class="btn btn--primary btn--lg btn--full-width">もう一度プレイ</button>
+            <button id="btn-back-to-main-from-over" class="btn btn--secondary btn--lg btn--full-width">メインメニューへ</button>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- JavaScriptをここに埋め込みます -->
+    <script>
+    class TileBlendGame {
+        constructor() {
+            this.gameState = {};
+            this.colors = ['red', 'blue', 'yellow', 'green'];
+            this.numbers = Array.from({ length: 13 }, (_, i) => i + 1);
+            this.draggedTile = null;
+            this.draggedFrom = null; // 'rack' or 'table'
+            this.resetGameState();
+        }
+
+        resetGameState() {
+            this.gameState = {
+                players: [],
+                currentPlayerIndex: 0,
+                playerTiles: {},
+                tableSets: [],
+                isSinglePlayer: false,
+                drawPile: [],
+            };
+        }
+
+        bindUIEvents() {
+            document.getElementById('btn-single-player').addEventListener('click', () => this.showPlayerSetup(true));
+            document.getElementById('btn-multi-player').addEventListener('click', () => this.showPlayerSetup(false));
+            document.getElementById('btn-rules').addEventListener('click', () => this.showScreen('rules-screen'));
+            document.getElementById('btn-back-to-main-from-setup').addEventListener('click', () => this.showScreen('main-menu'));
+            document.getElementById('player-count').addEventListener('change', () => this.updatePlayerSetupUI());
+            document.getElementById('btn-start-game').addEventListener('click', () => this.prepareAndStartGame());
+            document.getElementById('btn-back-to-main-from-rules').addEventListener('click', () => this.showScreen('main-menu'));
+            document.addEventListener('dragstart', this.handleDragStart.bind(this));
+            document.addEventListener('dragover', this.handleDragOver.bind(this));
+            document.addEventListener('drop', this.handleDrop.bind(this));
+            document.addEventListener('dragend', this.handleDragEnd.bind(this));
+            document.getElementById('btn-restart-game').addEventListener('click', () => this.restartGame());
+            document.getElementById('btn-back-to-main-from-over').addEventListener('click', () => this.showScreen('main-menu'));
+        }
+
+        showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) targetScreen.classList.add('active');
+        }
+
+        showPlayerSetup(isSinglePlayer) {
+            this.gameState.isSinglePlayer = isSinglePlayer;
+            document.getElementById('setup-title').textContent = isSinglePlayer ? 'シングルプレイヤー設定' : 'マルチプレイヤー設定';
+            this.updatePlayerSetupUI();
+            this.showScreen('player-setup');
+        }
+
+        updatePlayerSetupUI() {
+            const playerCount = parseInt(document.getElementById('player-count').value, 10);
+            const playerInputs = document.getElementById('player-inputs');
+            playerInputs.innerHTML = '';
+            for (let i = 1; i <= playerCount; i++) {
+                const isAI = this.gameState.isSinglePlayer && i > 1;
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'form-group';
+                if (!isAI) {
+                    inputGroup.innerHTML = `<label for="player-${i}-name">プレイヤー ${i}:</label><input type="text" id="player-${i}-name" class="form-control" value="プレイヤー ${i}">`;
+                } else {
+                    inputGroup.innerHTML = `<label for="player-${i}-difficulty">AI ${i - 1} の強さ:</label><select id="player-${i}-difficulty" class="form-control"><option value="easy">簡単</option><option value="medium" selected>普通</option><option value="hard">難しい</option></select>`;
+                }
+                playerInputs.appendChild(inputGroup);
+            }
+        }
+
+        prepareAndStartGame() {
+            this.showScreen('loading');
+            setTimeout(() => this.startGame(), 500);
+        }
+
+        startGame() {
+            this.resetGameState();
+            const playerCount = parseInt(document.getElementById('player-count').value, 10);
+            const players = [];
+            for (let i = 1; i <= playerCount; i++) {
+                const isAI = this.gameState.isSinglePlayer && i > 1;
+                const nameEl = document.getElementById(`player-${i}-name`);
+                const difficultyEl = document.getElementById(`player-${i}-difficulty`);
+                players.push({
+                    id: i - 1,
+                    name: isAI ? `AI ${i - 1} (${difficultyEl.value})` : nameEl.value,
+                    isAI: isAI,
+                });
+            }
+            this.gameState.players = players;
+            this.gameState.drawPile = this.createTiles();
+            players.forEach(p => {
+                this.gameState.playerTiles[p.id] = this.gameState.drawPile.splice(0, 14);
+            });
+            this.gameState.currentPlayerIndex = 0;
+            this.showScreen('game-board');
+            this.updateGameUI();
+        }
+
+        createTiles() {
+            const tiles = []; let id = 0;
+            for (let i = 0; i < 2; i++) {
+                for (const color of this.colors) {
+                    for (const number of this.numbers) {
+                        tiles.push({ id: id++, number, color, isJoker: false });
+                    }
+                }
+            }
+            tiles.push({ id: id++, number: 0, color: 'joker', isJoker: true });
+            tiles.push({ id: id++, number: 0, color: 'joker', isJoker: true });
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+            }
+            return tiles;
+        }
+
+        updateGameUI() {
+            this.updateCurrentPlayerDisplay(); this.updatePlayerTiles(); this.updateTableSets(); this.updateOtherPlayers();
+        }
+        updateCurrentPlayerDisplay() { document.getElementById('current-player-name').textContent = this.gameState.players[this.gameState.currentPlayerIndex].name; }
+        updatePlayerTiles() {
+            const player = this.gameState.players[this.gameState.currentPlayerIndex];
+            const tiles = this.gameState.playerTiles[player.id];
+            const container = document.getElementById('player-tiles');
+            container.innerHTML = '';
+            tiles.forEach(tile => {
+                const tileEl = this.createTileElement(tile);
+                tileEl.draggable = true;
+                container.appendChild(tileEl);
+            });
+            document.getElementById('tile-count').textContent = `${tiles.length}枚`;
+        }
+        updateTableSets() {
+            const tableArea = document.getElementById('table-area');
+            const placeholder = tableArea.querySelector('.table-placeholder');
+            tableArea.querySelectorAll('.table-set').forEach(el => el.remove());
+            if (this.gameState.tableSets.length === 0) {
+                placeholder.style.display = 'flex';
+            } else {
+                placeholder.style.display = 'none';
+                this.gameState.tableSets.forEach(set => {
+                    const setEl = document.createElement('div');
+                    setEl.className = 'table-set valid';
+                    setEl.dataset.setId = set.id;
+                    set.tiles.forEach(tile => {
+                        const tileEl = this.createTileElement(tile);
+                        tileEl.draggable = true;
+                        setEl.appendChild(tileEl);
+                    });
+                    tableArea.appendChild(setEl);
+                });
+            }
+        }
+        updateOtherPlayers() {
+            const container = document.getElementById('other-players'); container.innerHTML = '';
+            this.gameState.players.forEach((player, index) => {
+                const el = document.createElement('div');
+                el.className = 'player-info';
+                if (index === this.gameState.currentPlayerIndex) el.classList.add('current');
+                const tileCount = this.gameState.playerTiles[player.id]?.length || 0;
+                el.innerHTML = `<span>${player.name}</span><span class="tile-count">${tileCount}枚</span>`;
+                container.appendChild(el);
+            });
+        }
+        createTileElement(tile) {
+            const el = document.createElement('div');
+            el.className = `tile ${tile.color}`;
+            el.dataset.tileId = tile.id;
+            el.textContent = tile.isJoker ? '★' : tile.number;
+            if (tile.isJoker) el.classList.add('joker');
+            return el。
+        }
+        handleDragStart(e) {
+            if (!e.target.classList.contains('tile')) return;
+            this.draggedTile = { id: parseInt(e.target.dataset.tileId, 10), element: e.target };
+            this.draggedFrom = e.target.closest('.rack-tiles') ? 'rack' : 'table';
+            if (this.draggedFrom === 'table') {
+                this.draggedTile.setId = e.target.closest('.table-set').dataset.setId;
+            }
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        }
+        handleDragOver(e) { e.preventDefault(); }
+        handleDrop(e) {
+            e.preventDefault(); if (!this.draggedTile) return;
+            const targetSetEl = e.target.closest('.table-set');
+            if (targetSetEl) this.dropTileOnSet(targetSetEl);
+            else if (e.target.closest('#table-area')) this.dropTileOnTable();
+        }
+        handleDragEnd(e) {
+            if (this.draggedTile?.element) this.draggedTile.element.classList.remove('dragging');
+            this.draggedTile = null; this.draggedFrom = null;
+        }
+        removeTileFromSource() {
+            let tile; const tileId = this.draggedTile.id;
+            if (this.draggedFrom === 'rack') {
+                const playerTiles = this.gameState.playerTiles[this.gameState.currentPlayerIndex];
+                const tileIndex = playerTiles.findIndex(t => t.id === tileId);
+                if (tileIndex > -1) [tile] = playerTiles.splice(tileIndex, 1);
+            } else if (this.draggedFrom === 'table') {
+                const sourceSet = this.gameState.tableSets.find(s => s.id == this.draggedTile.setId);
+                if (sourceSet) {
+                    const tileIndex = sourceSet.tiles.findIndex(t => t.id === tileId);
+                    if (tileIndex > -1) [tile] = sourceSet.tiles.splice(tileIndex, 1);
+                    if (sourceSet.tiles.length === 0) this.gameState.tableSets = this.gameState.tableSets.filter(s => s.id != sourceSet.id);
+                }
+            }
+            return tile;
+        }
+        dropTileOnTable() { const tile = this.removeTileFromSource(); if (tile) { this.gameState.tableSets.push({ id: Date.now(), tiles: [tile] }); this.updateGameUI(); } }
+        dropTileOnSet(targetSetEl) {
+            const targetSet = this.gameState.tableSets.find(s => s.id == targetSetEl.dataset.setId);
+            const tile = this.removeTileFromSource();
+            if (tile && targetSet) { targetSet.tiles.push(tile); this.updateGameUI(); }
+        }
+        restartGame() { this.resetGameState(); this.showScreen('main-menu'); }
+    }
+
+    // ページの読み込みが完了したら、ゲームを初期化してイベントを紐付ける
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const game = new TileBlendGame();
+            game.bindUIEvents();
+            game.updatePlayerSetupUI();
+        } catch (error) {
+            console.error("ゲームの初期化中にエラーが発生しました:", error);
+            document.body.innerHTML = '<h1>エラーが発生しました</h1><p>開発者コンソールを確認してください。</p>';
+        }
+    });
+    </script>
 </body>
 </html>
