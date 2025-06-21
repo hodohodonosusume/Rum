@@ -294,20 +294,19 @@ class TileBlendGame {
         }
     }
 
-    createTileElement(tile) {
-        const tileElement = document.createElement('div');
-        tileElement.className = `tile ${tile.color}`;
-        tileElement.dataset.tileId = tile.id;
-        
-        if (tile.isJoker) {
-            tileElement.textContent = '★';
-            tileElement.classList.add('joker');
-        } else {
-            tileElement.textContent = tile.number;
-        }
-        
-        return tileElement;
+    createTableSetElement(set) {
+    const setElement = document.createElement('div');
+    setElement.className = 'table-set valid';
+    setElement.dataset.setId = set.id;
+    
+    for (const tile of set.tiles) {
+        const tileElement = this.createTileElement(tile);
+        tileElement.draggable = true;
+        setElement.appendChild(tileElement);
     }
+    
+    return setElement;
+}
 
     updateTableSets() {
         const tableArea = document.getElementById('table-area');
@@ -386,16 +385,28 @@ class TileBlendGame {
 
     // ドラッグ&ドロップ処理
     handleDragStart(e) {
-        if (!e.target.classList.contains('tile')) return;
-        
-        this.draggedTile = {
-            id: parseInt(e.target.dataset.tileId),
-            element: e.target
-        };
-        
-        e.target.classList.add('dragging');
+    if (!e.target.classList.contains('tile')) return;
+    
+    this.draggedTile = {
+        id: parseInt(e.target.dataset.tileId),
+        element: e.target
+    };
+    
+    // ドラッグ元の安全な判定
+    if (e.target.closest('.rack-tiles')) {
+        this.draggedFrom = 'rack';
+    } else if (e.target.closest('.table-set')) {
+        this.draggedFrom = 'table';
+        this.draggedTile.setId = e.target.closest('.table-set').dataset.setId;
+    } else {
+        this.draggedFrom = null; // 安全な初期化
+    }
+    
+    e.target.classList.add('dragging');
+    if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
     }
+}
 
     handleDragOver(e) {
         e.preventDefault();
@@ -421,8 +432,33 @@ class TileBlendGame {
     }
 
     dropTileOnTable(e) {
-        this.showMessage('タイルを配置しました', 'info');
-    }
+    if (!this.draggedTile || !this.draggedFrom) return;
+    
+    const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+    if (!currentPlayer) return;
+    
+    // 手札からのドラッグのみ処理
+    if (this.draggedFrom !== 'rack') return;
+    
+    const playerTiles = this.gameState.playerTiles[currentPlayer.id];
+    const tileIndex = playerTiles.findIndex(t => t.id === this.draggedTile.id);
+    
+    if (tileIndex === -1) return;
+    
+    // タイルを手札から削除
+    const [tile] = playerTiles.splice(tileIndex, 1);
+    
+    // 新しいテーブルセットとして場に追加
+    this.gameState.tableSets.push({
+        id: Date.now() + Math.random(),
+        tiles: [tile],
+        playerId: currentPlayer.id
+    });
+    
+    // UIを更新
+    this.updateGameUI();
+    this.showMessage('タイルを場に出しました', 'info');
+}
 
     // タッチイベント処理（簡略版）
     handleTouchStart(e) {
